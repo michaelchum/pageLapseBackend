@@ -13,7 +13,7 @@ ON_POSIX = 'posix' in sys.builtin_module_names
 
 tmp_dir = 'tmp/'
 host_dir = 'tmp_host/'
-screen_path = 'screenshots/'
+screen_dir = 'screenshots/'
 
 def enqueue_output(out, queue):
 
@@ -48,11 +48,14 @@ def fetch(repo_url):
     # clone repo
     if os.path.exists(repo_path):
         shutil.rmtree(repo_path)
-
     repo = Repo.clone_from(repo_url, repo_path)
 
     repo = Repo(repo_path)
     git = repo.git
+
+    # create screenshot dir
+    if not os.path.exists(screen_dir+repo_name):
+        os.mkdir(screen_dir+repo_name)
 
     # fetch all commits
     commit_list = []
@@ -124,7 +127,7 @@ def phantom(host_address, repo_path, commit_list, index, repo_name):
         git.checkout(commit_list.pop(0))
         # visit the site and screenshot
         driver.get(host_address)
-        driver.save_screenshot(screen_path + '/' + repo_name + '/' + str(index).zfill(3) + '.png')
+        driver.save_screenshot(screen_dir + '/' + repo_name + '/' + str(index).zfill(3) + '.png')
         index += 1
 
     driver.quit()
@@ -132,9 +135,13 @@ def phantom(host_address, repo_path, commit_list, index, repo_name):
 
 # serve('tmp/mchacks', 'tmp_host/mchacks', 4000)
 
+start = time.clock()
+
 fetch('https://github.com/markprokoudine/mchacks')
 
+elapsed = elapsed - start
 
+print elapsed
 
 
 
