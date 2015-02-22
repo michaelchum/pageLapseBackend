@@ -9,6 +9,7 @@ import shutil
 from multiprocessing import Process
 import os
 import time
+import subprocess
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
@@ -64,27 +65,39 @@ def fetch(repo_url):
         commit_list.append(commit)
     commit_list.reverse()
 
-    print repo.git.diff(commit_list[0])
+    print len(commit_list)
+    # filter changed files
+    critical_changes = ('config.yml', '.html', '.js', '.scss', '.css', '.php', '.svg', '.png', '.gif', '.jpg', '.jpeg', '.jade')
+    filtered_commit_list = []
+    for i in range(1, len(commit_list)-1):
+        changed_files = []
+        changes = git.diff(commit_list[i-1], commit_list[i], '--name-only').split('\n')
+        for change in changes:
+            if change.endswith(critical_changes):
+                filtered_commit_list.append(commit_list[i])
+                print changes
+                break
+    print len(filtered_commit_list)
 
-    # chunked_commit_list = list(chunks(commit_list, 20))
-    # numThreads = len(chunked_commit_list)
+    chunked_commit_list = list(chunks(filtered_commit_list, 20))
+    numThreads = len(chunked_commit_list)
 
-    # # list servers
-    # phantom_process_list = []
+    # list servers
+    phantom_process_list = []
 
-    # # spawn server threads
-    # for x in range(numThreads):
-    #     port = 4000 + x
-    #     sub_chunk = chunked_commit_list[x]
-    #     start_index = x * 30
-    #     sub_repo_path = repo_path + str(x)
-    #     sub_host_path = host_path + str(x)
-    #     copy(repo_path, sub_repo_path)
-    #     host_address = spawn_server_thread(port, sub_repo_path, sub_host_path, repo_name)
-    #     phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index, repo_name))
+    # spawn server threads
+    for x in range(numThreads):
+        port = 4000 + x
+        sub_chunk = chunked_commit_list[x]
+        start_index = x * 30
+        sub_repo_path = repo_path + str(x)
+        sub_host_path = host_path + str(x)
+        copy(repo_path, sub_repo_path)
+        host_address = spawn_server_thread(port, sub_repo_path, sub_host_path, repo_name)
+        phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index, repo_name))
 
-    # for t in phantom_process_list:
-    #     t.join()
+    for t in phantom_process_list:
+        t.join()
 
 def spawn_server_thread(port, repo_path, host_path, repo_name):
 
