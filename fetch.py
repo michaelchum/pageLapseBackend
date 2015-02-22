@@ -11,6 +11,10 @@ import os
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
+tmp_dir = 'tmp/'
+host_dir = 'tmp_host/'
+screen_path = 'screenshots/'
+
 def enqueue_output(out, queue):
 
     for line in iter(out.readline, b''):
@@ -37,9 +41,6 @@ def copy(src, dest):
 def fetch(repo_url):
 
     # setup paths
-    tmp_dir = 'tmp/'
-    host_dir = 'tmp_host/'
-    screen_path = 'screenshots/'
     repo_name = repo_url.split('/')[-1]
     repo_path = tmp_dir + repo_name
     host_path = host_dir + repo_name
@@ -73,13 +74,13 @@ def fetch(repo_url):
         sub_repo_path = repo_path + str(x)
         sub_host_path = host_path + str(x)
         copy(repo_path, sub_repo_path)
-        host_address = spawn_server_thread(port, sub_repo_path, sub_host_path)
-        phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index))
+        host_address = spawn_server_thread(port, sub_repo_path, sub_host_path, repo_name)
+        phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index, repo_name))
 
     for t in phantom_process_list:
         t.join()
 
-def spawn_server_thread(port, repo_path, host_path):
+def spawn_server_thread(port, repo_path, host_path, repo_name):
 
     # spawn child thread and serve 
     p = Popen(['jekyll', 'serve', '--watch', '-s', repo_path, '-d', host_path, '--port', str(port)] , stdout=PIPE, stderr=PIPE, bufsize=1, close_fds=ON_POSIX)
@@ -98,18 +99,18 @@ def spawn_server_thread(port, repo_path, host_path):
             continue
         else: # got line
             if "Server running" in line:
-                print "Server running " + repo_path[-1] + " on " + host_address
+                print "Server running " + repo_name + " on " + host_address
                 return host_address
 
-def spawn_phantom_process(host_address, repo_path, commit_list, index):
+def spawn_phantom_process(host_address, repo_path, commit_list, index, repo_name):
     # spawn child thread and serve 
-    t = Process(target=phantom, args=(host_address, repo_path, commit_list, index))
+    t = Process(target=phantom, args=(host_address, repo_path, commit_list, index, repo_name))
     t.daemon = True # thread dies with the program
     t.start()
 
     return t
 
-def phantom(host_address, repo_path, commit_list, index):
+def phantom(host_address, repo_path, commit_list, index, repo_name):
 
     repo = Repo(repo_path)
     git = repo.git
@@ -123,7 +124,7 @@ def phantom(host_address, repo_path, commit_list, index):
         git.checkout(commit_list.pop(0))
         # visit the site and screenshot
         driver.get(host_address)
-        driver.save_screenshot(str(index).zfill(3) + '.png')
+        driver.save_screenshot(screen_path + '/' + repo_name + '/' + str(index).zfill(3) + '.png')
         index += 1
 
     driver.quit()
