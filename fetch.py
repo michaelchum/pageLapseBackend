@@ -10,6 +10,7 @@ from multiprocessing import Process
 import os
 import time
 import subprocess
+import signal
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
@@ -65,7 +66,8 @@ def fetch(repo_url):
         commit_list.append(commit)
     commit_list.reverse()
 
-    print len(commit_list)
+    # print len(commit_list)
+
     # filter changed files
     critical_changes = ('config.yml', '.html', '.js', '.scss', '.css', '.php', '.svg', '.png', '.gif', '.jpg', '.jpeg', '.jade')
     filtered_commit_list = []
@@ -77,7 +79,7 @@ def fetch(repo_url):
                 filtered_commit_list.append(commit_list[i])
                 print changes
                 break
-    print len(filtered_commit_list)
+    # print len(filtered_commit_list)
 
     chunked_commit_list = list(chunks(filtered_commit_list, 20))
     numThreads = len(chunked_commit_list)
@@ -93,8 +95,8 @@ def fetch(repo_url):
         sub_repo_path = repo_path + str(x)
         sub_host_path = host_path + str(x)
         copy(repo_path, sub_repo_path)
-        host_address = spawn_server_thread(port, sub_repo_path, sub_host_path, repo_name)
-        phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index, repo_name))
+        host_address, pid = spawn_server_thread(port, sub_repo_path, sub_host_path, repo_name)
+        phantom_process_list.append(spawn_phantom_process(host_address, sub_repo_path, sub_chunk, start_index, repo_name, pid))
 
     for t in phantom_process_list:
         t.join()
@@ -119,17 +121,18 @@ def spawn_server_thread(port, repo_path, host_path, repo_name):
         else: # got line
             if "Server running" in line:
                 print "Server running " + repo_name + " on " + host_address
-                return host_address
+                print p.pid
+                return host_address, p.pid
 
-def spawn_phantom_process(host_address, repo_path, commit_list, index, repo_name):
+def spawn_phantom_process(host_address, repo_path, commit_list, index, repo_name, pid):
     # spawn child thread and serve 
-    t = Process(target=phantom, args=(host_address, repo_path, commit_list, index, repo_name))
+    t = Process(target=phantom, args=(host_address, repo_path, commit_list, index, repo_name, pid))
     t.daemon = True # thread dies with the program
     t.start()
 
     return t
 
-def phantom(host_address, repo_path, commit_list, index, repo_name):
+def phantom(host_address, repo_path, commit_list, index, repo_name, pid):
 
     repo = Repo(repo_path)
     git = repo.git
@@ -147,6 +150,8 @@ def phantom(host_address, repo_path, commit_list, index, repo_name):
         index += 1
 
     driver.quit()
+
+    os.kill(pid, signal.SIGQUIT)
 
 
 # serve('tmp/mchacks', 'tmp_host/mchacks', 4000)
