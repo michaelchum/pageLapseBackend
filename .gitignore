@@ -2,3 +2,5 @@ tmp/
 tmp_host/
 env/
 screenshots/
+ghostdriver.log
+_site

@@ -7,6 +7,7 @@ from Queue import Queue, Empty
 import errno
 import shutil
 from multiprocessing import Process
+import os
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
@@ -22,6 +23,8 @@ def chunks(l, n):
         yield l[i:i+n]
 
 def copy(src, dest):
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
     try:
         shutil.copytree(src, dest)
     except OSError as e:
@@ -42,6 +45,9 @@ def fetch(repo_url):
     host_path = host_dir + repo_name
 
     # clone repo
+    if os.path.exists(repo_path):
+        shutil.rmtree(repo_path)
+
     repo = Repo.clone_from(repo_url, repo_path)
 
     repo = Repo(repo_path)
@@ -117,7 +123,7 @@ def phantom(host_address, repo_path, commit_list, index):
         git.checkout(commit_list.pop(0))
         # visit the site and screenshot
         driver.get(host_address)
-        driver.save_screenshot(str(index) + '.png')
+        driver.save_screenshot(str(index).zfill(3) + '.png')
         index += 1
 
     driver.quit()
