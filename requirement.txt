@@ -1,5 +1,7 @@
+EasyProcess==0.1.6
 GitPython==0.3.6
 PySide==1.2.2
 gitdb==0.6.4
+selenium==2.44.0
 smmap==0.9.0
 wsgiref==0.1.2
